@@ -106,6 +106,17 @@ bool errorCondition(std::istream& unbuiltFile, std::istream& builtFile)
   return errorFound;
 }
 
+CRingItem getNextItem(std::istream& file)
+{
+    CRingItem item(VOID);
+
+    while ( file && (item.type() != PHYSICS_EVENT)) {
+      file >> item;
+    }
+
+    return item;
+}
+
 int main(int argc, char* argv[])
 {
 
@@ -123,25 +134,16 @@ int main(int argc, char* argv[])
 
   count = 0;
   while (unbuiltFile && builtFile) {
-    CRingItem builtItem(VOID);
-    CRingItem unbuiltItem(VOID);
-
-    while ( unbuiltFile && unbuiltItem.type() != PHYSICS_EVENT) {
-      unbuiltFile >> unbuiltItem;
-    }
-
-    while ( builtFile && builtItem.type() != PHYSICS_EVENT) {
-      builtFile >> builtItem;
-    }
+    CRingItem builtItem = getNextItem(unbuiltFile);
+    CRingItem unbuiltItem = getNextItem(builtFile);
 
     if ( eofCondition(unbuiltFile, builtFile) || errorCondition(unbuiltFile, builtFile) ) {
       break;
     }
 
-    compareEventItems(unbuiltItem, builtItem);
+    compareItems(unbuiltItem, builtItem);
 
     count++;
-
   }
    
   unbuiltFile.close();
