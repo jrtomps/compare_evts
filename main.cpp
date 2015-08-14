@@ -67,6 +67,45 @@ void compareItems(CRingItem& ubItem, CRingItem bItem)
   }
 }
 
+bool eofCondition(std::istream& unbuiltFile, std::istream& builtFile) 
+{
+  bool eofSet = false;
+
+  // check for the stream state flags
+  if (unbuiltFile.eof()) {
+    if (! builtFile.eof()) {
+      cout << "built file contains more data than unbuilt" << endl;
+    }
+    eofSet = true;
+  }
+ 
+  if (builtFile.eof()) {
+    if (! unbuiltFile.eof()) {
+      cout << "built file contains more data than unbuilt" << endl;
+    } 
+    eofSet = true;
+  }
+  
+  return eofSet;
+}
+
+bool errorCondition(std::istream& unbuiltFile, std::istream& builtFile) 
+{
+  bool errorFound = false;
+
+  if (unbuiltFile.rdstate()!=0) {
+    cout << "Unbuilt file has error state" << endl;
+    errorFound = true;
+  }
+
+  if (builtFile.rdstate()!=0) {
+    cout << "Built file has error state" << endl;
+    errorFound = true;
+  }
+
+  return errorFound;
+}
+
 int main(int argc, char* argv[])
 {
 
@@ -84,52 +123,27 @@ int main(int argc, char* argv[])
 
   count = 0;
   while (unbuiltFile && builtFile) {
-    CRingItem builtItem(0);
-    CRingItem unbuiltItem(0);
+    CRingItem builtItem(VOID);
+    CRingItem unbuiltItem(VOID);
 
-    unbuiltFile >> unbuiltItem;
-    builtFile   >> builtItem;
-//    cout << unique_ptr<CRingItem>(CRingItemFactory::createRingItem(builtItem))->toString() << endl;
-    if (builtItem.type() == EVB_GLOM_INFO) {
+    while ( unbuiltFile && unbuiltItem.type() != PHYSICS_EVENT) {
+      unbuiltFile >> unbuiltItem;
+    }
+
+    while ( builtFile && builtItem.type() != PHYSICS_EVENT) {
       builtFile >> builtItem;
-//    cout << unique_ptr<CRingItem>(CRingItemFactory::createRingItem(builtItem))->toString() << endl;
     }
 
-    // check for the stream state flags
-    if (unbuiltFile.eof()) {
-      if (! builtFile.eof()) {
-        cout << "built file contains more data than unbuilt" << endl;
-      } else {
-        break;
-      }
-    }
-    if (builtFile.eof()) {
-      if (! unbuiltFile.eof()) {
-        cout << "built file contains more data than unbuilt" << endl;
-      } else {
-        break;
-      }
-    }
-    if (unbuiltFile.rdstate()!=0) {
-      cout << "Unbuilt file has error state" << endl;
-    }
-    
-    if (builtFile.rdstate()!=0) {
-      cout << "Built file has error state" << endl;
+    if ( eofCondition(unbuiltFile, builtFile) || errorCondition(unbuiltFile, builtFile) ) {
+      break;
     }
 
-    if (unbuiltItem.type() == PHYSICS_EVENT && builtItem.type() == PHYSICS_EVENT) {
-      compareEventItems(unbuiltItem, builtItem);
-    } else {
-      compareItems(unbuiltItem, builtItem);
-    }
+    compareEventItems(unbuiltItem, builtItem);
 
     count++;
 
   }
    
-  cout << "EOF file found in both" << endl;
-
   unbuiltFile.close();
   builtFile.close();
 
