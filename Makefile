@@ -19,7 +19,7 @@ OBJECTS = main.o FragmentIndex.o
 #  it must be of the form libsomethingorother.so
 #
 
-USERFILTER = UserFilter
+USERFILTER = compare_evts
 
 %.o : %.cpp
 	$(CXX) $(USERCXXFLAGS) -c -o $@ $<
