@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
 {
 
   if (argc!=3) {
-    cout << "Usage: ./compare_evts unbuilt_file built_file" << endl;
+    cout << "Usage: ./compare_evts file0 file1" << endl;
     return 1;
   }
 
