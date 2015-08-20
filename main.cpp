@@ -25,6 +25,8 @@ void printItems(ostream& stream, uint16_t* pUBItem, uint16_t* pBItem)
       unique_ptr<CRingItem> priB( CRingItemFactory::createRingItem(pBItem));
       stream << "Built item" << endl;
       stream << priB->toString() << "\n" << endl;
+
+      throw 1;
 }
       
 void compareEventItems(CRingItem& ubItem, CRingItem bItem)
@@ -52,14 +54,18 @@ void compareItems(CRingItem& ubItem, CRingItem bItem)
   uint16_t* pBItem  = reinterpret_cast<uint16_t*>(bItem.getItemPointer());
   uint16_t* pUBItem = reinterpret_cast<uint16_t*>(ubItem.getItemPointer());
 
-  size_t builtSize = bItem.size();
-  size_t unbuiltSize = ubItem.size();
+  size_t builtSize = bItem.getBodySize();
+  size_t unbuiltSize = ubItem.getBodySize();
+  uint16_t* pBItemBody  = reinterpret_cast<uint16_t*>(bItem.getBodyPointer());
+  uint16_t* pUBItemBody = reinterpret_cast<uint16_t*>(ubItem.getBodyPointer());
+
+
   if ( builtSize != unbuiltSize ) {
     cout << "index=" << setw(6) << count << " Differing sizes observed in the ring items" << endl;
     cout << "      " << setw(6) << " " << "ubSize=" << unbuiltSize << "bSize=" << builtSize << endl;
     printItems(cout, pUBItem, pBItem);
   } else {
-    if (! std::equal(pUBItem, pUBItem+ubItem.size()/sizeof(uint16_t), pBItem) ) {
+    if (! std::equal(pUBItemBody, pUBItemBody+ubItem.getBodySize()/sizeof(uint16_t), pBItemBody) ) {
       cout << "index=" << count << " Diffent content observed" << endl;
 
       printItems(cout, pUBItem, pBItem);
@@ -67,20 +73,22 @@ void compareItems(CRingItem& ubItem, CRingItem bItem)
   }
 }
 
-bool eofCondition(std::istream& unbuiltFile, std::istream& builtFile) 
+
+
+bool eofCondition(std::istream& file0, std::istream& file1) 
 {
   bool eofSet = false;
 
   // check for the stream state flags
-  if (unbuiltFile.eof()) {
-    if (! builtFile.eof()) {
+  if (file0.eof()) {
+    if (! file1.eof()) {
       cout << "built file contains more data than unbuilt" << endl;
     }
     eofSet = true;
   }
  
-  if (builtFile.eof()) {
-    if (! unbuiltFile.eof()) {
+  if (file1.eof()) {
+    if (! file0.eof()) {
       cout << "built file contains more data than unbuilt" << endl;
     } 
     eofSet = true;
@@ -89,22 +97,28 @@ bool eofCondition(std::istream& unbuiltFile, std::istream& builtFile)
   return eofSet;
 }
 
-bool errorCondition(std::istream& unbuiltFile, std::istream& builtFile) 
+
+
+
+bool errorCondition(std::istream& file0, std::istream& file1) 
 {
   bool errorFound = false;
 
-  if (unbuiltFile.rdstate()!=0) {
+  if (file0.rdstate()!=0) {
     cout << "Unbuilt file has error state" << endl;
     errorFound = true;
   }
 
-  if (builtFile.rdstate()!=0) {
+  if (file1.rdstate()!=0) {
     cout << "Built file has error state" << endl;
     errorFound = true;
   }
 
   return errorFound;
 }
+
+
+
 
 CRingItem getNextItem(std::istream& file)
 {
@@ -129,15 +143,15 @@ int main(int argc, char* argv[])
   std::string unbuilt_file_path(argv[1]);
   std::string built_file_path(argv[2]);
 
-  std::ifstream unbuiltFile(unbuilt_file_path.c_str());
-  std::ifstream builtFile(built_file_path.c_str());
+  std::ifstream file0(unbuilt_file_path.c_str());
+  std::ifstream file1(built_file_path.c_str());
 
   count = 0;
-  while (unbuiltFile && builtFile) {
-    CRingItem builtItem = getNextItem(unbuiltFile);
-    CRingItem unbuiltItem = getNextItem(builtFile);
+  while (file0 && file1) {
+    CRingItem builtItem   = getNextItem(file0);
+    CRingItem unbuiltItem = getNextItem(file1);
 
-    if ( eofCondition(unbuiltFile, builtFile) || errorCondition(unbuiltFile, builtFile) ) {
+    if ( eofCondition(file0, file1) || errorCondition(file0, file1) ) {
       break;
     }
 
@@ -146,8 +160,7 @@ int main(int argc, char* argv[])
     count++;
   }
    
-  unbuiltFile.close();
-  builtFile.close();
+  cout << "Processed " << count << " PHYSICS_EVENTS" << endl;
 
   return 0;
 }
