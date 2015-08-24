@@ -27,7 +27,9 @@ void printItems(ostream& stream, uint16_t* pUBItem, uint16_t* pBItem)
       stream << "Built item" << endl;
       stream << priB->toString() << "\n" << endl;
 }
-      
+     
+
+
 void compareEventItems(CRingItem& ubItem, CRingItem bItem)
 {
   FragmentIndex index(reinterpret_cast<uint16_t*>(bItem.getBodyPointer()));
@@ -48,25 +50,7 @@ void compareEventItems(CRingItem& ubItem, CRingItem bItem)
   }
 }
 
-void compareItems(CRingItem& ubItem, CRingItem bItem)
-{
-  uint16_t* pBItem  = reinterpret_cast<uint16_t*>(bItem.getItemPointer());
-  uint16_t* pUBItem = reinterpret_cast<uint16_t*>(ubItem.getItemPointer());
 
-  size_t builtSize = bItem.size();
-  size_t unbuiltSize = ubItem.size();
-  if ( builtSize != unbuiltSize ) {
-    cout << "index=" << setw(6) << count << " Differing sizes observed in the ring items" << endl;
-    cout << "      " << setw(6) << " " << "ubSize=" << unbuiltSize << "bSize=" << builtSize << endl;
-    printItems(cout, pUBItem, pBItem);
-  } else {
-    if (! std::equal(pUBItem, pUBItem+ubItem.size()/sizeof(uint16_t), pBItem) ) {
-      cout << "index=" << count << " Diffent content observed" << endl;
-
-      printItems(cout, pUBItem, pBItem);
-    }
-  }
-}
 
 CRingItem getNextItem(std::istream& file) 
 {
@@ -77,6 +61,8 @@ CRingItem getNextItem(std::istream& file)
 
   return item;
 }
+
+
 
 bool checkFileState(std::istream& unbuiltFile, std::istream& builtFile) {
   // check for the stream state flags
@@ -100,6 +86,9 @@ bool checkFileState(std::istream& unbuiltFile, std::istream& builtFile) {
 
   return (builtFile.eof() || unbuiltFile.eof());
 }
+
+
+
 
 int main(int argc, char* argv[])
 {
