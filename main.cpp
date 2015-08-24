@@ -9,6 +9,7 @@
 #include <fstream>
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 
 using namespace std;
 using namespace DAQ;
@@ -37,7 +38,7 @@ void compareEventItems(CRingItem& ubItem, CRingItem bItem)
   size_t unbuiltSize = ubItem.size();
   if ( builtSize != unbuiltSize ) {
     cout << "index=" << setw(6) << count << " Differing sizes observed in the ring items" << endl;
-    cout << "      " << setw(6) << " " << "ubSize=" << unbuiltSize << "bSize=" << builtSize << endl;
+    cout << "      " << setw(6) << " " << "ubSize=" << unbuiltSize << " bSize=" << builtSize << endl;
     printItems(cout, pUBItem, pBItem);
   } else {
     if (! std::equal(pUBItem, pUBItem+ubItem.size()/sizeof(uint16_t), pBItem) ) {
@@ -67,6 +68,39 @@ void compareItems(CRingItem& ubItem, CRingItem bItem)
   }
 }
 
+CRingItem getNextItem(std::istream& file) 
+{
+  CRingItem item(VOID);
+  while (file && (item.type() != PHYSICS_EVENT)) {
+    file >> item;
+  }
+
+  return item;
+}
+
+bool checkFileState(std::istream& unbuiltFile, std::istream& builtFile) {
+  // check for the stream state flags
+  if (unbuiltFile.eof()) {
+    if (! builtFile.eof()) {
+      throw runtime_error("unbuilt file contains more data than unbuilt");
+    }
+  }
+  if (builtFile.eof()) {
+    if (! unbuiltFile.eof()) {
+      throw runtime_error("built file contains more data than unbuilt");
+    }
+  }
+  if (unbuiltFile.rdstate()!=0 && !unbuiltFile.eof()) {
+    throw runtime_error("Unbuilt file has error state");
+  }
+
+  if (builtFile.rdstate()!=0 && ! builtFile.eof()) {
+    throw runtime_error("Built file has error state");
+  }
+
+  return (builtFile.eof() || unbuiltFile.eof());
+}
+
 int main(int argc, char* argv[])
 {
 
@@ -80,55 +114,29 @@ int main(int argc, char* argv[])
   std::string built_file_path(argv[2]);
 
   std::ifstream unbuiltFile(unbuilt_file_path.c_str());
+  if (!unbuiltFile.is_open()) { cout << unbuilt_file_path << " not found" << endl; return 1; }
   std::ifstream builtFile(built_file_path.c_str());
+  if (!builtFile.is_open()) { cout << built_file_path << " not found" << endl; return 1; }
 
-  count = 0;
-  while (unbuiltFile && builtFile) {
-    CRingItem builtItem(0);
-    CRingItem unbuiltItem(0);
+  try {
+    count = 0;
+    while (unbuiltFile && builtFile) {
+      CRingItem builtItem = getNextItem(builtFile);
+      CRingItem unbuiltItem = getNextItem(unbuiltFile);
 
-    unbuiltFile >> unbuiltItem;
-    builtFile   >> builtItem;
-//    cout << unique_ptr<CRingItem>(CRingItemFactory::createRingItem(builtItem))->toString() << endl;
-    if (builtItem.type() == EVB_GLOM_INFO) {
-      builtFile >> builtItem;
-//    cout << unique_ptr<CRingItem>(CRingItemFactory::createRingItem(builtItem))->toString() << endl;
-    }
+      if (checkFileState( unbuiltFile, builtFile)) break;
 
-    // check for the stream state flags
-    if (unbuiltFile.eof()) {
-      if (! builtFile.eof()) {
-        cout << "built file contains more data than unbuilt" << endl;
-      } else {
-        break;
-      }
-    }
-    if (builtFile.eof()) {
-      if (! unbuiltFile.eof()) {
-        cout << "built file contains more data than unbuilt" << endl;
-      } else {
-        break;
-      }
-    }
-    if (unbuiltFile.rdstate()!=0) {
-      cout << "Unbuilt file has error state" << endl;
-    }
-    
-    if (builtFile.rdstate()!=0) {
-      cout << "Built file has error state" << endl;
-    }
-
-    if (unbuiltItem.type() == PHYSICS_EVENT && builtItem.type() == PHYSICS_EVENT) {
       compareEventItems(unbuiltItem, builtItem);
-    } else {
-      compareItems(unbuiltItem, builtItem);
+
+      count++;
+
     }
 
-    count++;
-
+  } catch (exception& exc) {
+    cout << exc.what() << endl;
   }
-   
-  cout << "EOF file found in both" << endl;
+
+  cout << "Processed " << count << " events" << endl;
 
   unbuiltFile.close();
   builtFile.close();
